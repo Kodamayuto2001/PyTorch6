@@ -120,8 +120,8 @@ class MyDataLoader:
         self.testData = torchvision.datasets.ImageFolder(root=testRootDir,transform=transforms.Compose([transforms.Grayscale(),transforms.Resize((imgSize,imgSize)),transforms.ToTensor(),]))
         pass
     def __dataLoader(self,batchSize,numWorkers):
-        self.trainDataLoaders = torch.utils.data.DataLoader(self.trainData,batch_size=batchSize,shuffle=True,num_workers=numWorkers)
-        self.testDataLoaders = torch.utils.data.DataLoader(self.testData,batch_size=batchSize,shuffle=True,num_workers=numWorkers)
+        self.trainDataLoaders = torch.utils.data.DataLoader(self.trainData,batch_size=1,shuffle=True,num_workers=numWorkers)
+        self.testDataLoaders = torch.utils.data.DataLoader(self.testData,batch_size=1,shuffle=True,num_workers=numWorkers)
         pass
     def imshow(self):
        print(type(self.trainDataLoaders))
@@ -174,10 +174,14 @@ if __name__ == "__main__":
     Person1 = MyDataset(dirImgPath="Resources/",tagName="Yuto2",dataNum=100)
 
     #データローダーを取得
-    mDataLoader = MyDataLoader(trainRootDir="Resources/train/",testRootDir="Resources/test/",imgSize=28,batchSize=10,numWorkers=1)
+    mDataLoader = MyDataLoader(trainRootDir="Resources/train/",testRootDir="Resources/test/",imgSize=28,batchSize=1,numWorkers=1)
+    #mDataLoader.imshow()
+    print(mDataLoader.trainData)
 
     loaders = mDataLoader.getDataLoaders()
-
+    print(loaders)
+    print(loaders["train"])
+    #print(loaders["train"].shape())
     optimizer = torch.optim.Adam(params=net.parameters(),lr=0.01)
 
     for e in range(epoch):
@@ -200,24 +204,31 @@ if __name__ == "__main__":
         net.eval()
         testLoss = 0
         correct = 0
+        total = 0
 
         with torch.no_grad():
             for data in loaders["test"]:
                 #print(i)
                 #print(data)
                 inputs,label = data
+                #print(inputs)
+                print(label)
                 inputs = inputs.view(-1,28*28)
                 output = net(inputs)
-                testLoss += F.nll_loss(output,label,reduction="sum").item()
-                pred = output.argmax(dim=1,keepdim=True)
-                correct += pred.eq(label.view_as(pred)).sum().item()
+                #testLoss += F.nll_loss(output,label,reduction="sum").item()
+                #pred = output.argmax(dim=1,keepdim=True)
+                #correct += pred.eq(label.view_as(pred)).sum().item()
                 #print(correct)
+                _,predicted = torch.max(output.data,1)
+                total += label.size(0)
+                correct += (predicted == label).sum().item()
 
         #testLoss /= 100
         print("Test Loss (avg): {}".format(testLoss))
+        print("Accuracy of the network on the 100 test images: %d %%" % (100*correct/total))
 
         history['testLoss'].append(testLoss)
-        history['testAcc'].append(correct / 100)
+        history['testAcc'].append(100*correct/total)
 
     # 結果の出力と描画
     print(history)
@@ -234,6 +245,10 @@ if __name__ == "__main__":
     plt.xlabel('epoch')
     plt.savefig('test_acc.png')
 
+
+    #Save
+    PATH = "model.pt"
+    torch.save(net.state_dict(), PATH)
 
 
 
